@@ -12,6 +12,34 @@ const promptOverridesZ = z
   })
   .default({});
 
+const agentProfileZ = z.object({
+  command: z.string().min(1).optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  permissions: z.enum(["auto-allow", "deny"]).optional(),
+});
+
+const agentModelsZ = z.object({
+  provider: z.literal("agent"),
+  command: z.string().min(1).optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).default({}),
+  permissions: z.enum(["auto-allow", "deny"]).default("deny"),
+  ideal_definer: z.string().default("default"),
+  judge: z.string().default("default"),
+  jury: z.array(z.string()).min(1).default(["default", "default", "default"]),
+  profiles: z.record(z.string(), agentProfileZ).default({}),
+});
+
+const openAIModelsZ = z.object({
+  provider: z.literal("openai"),
+  api_key_env: z.string().default("OPENAI_API_KEY"),
+  base_url: z.string().url().optional(),
+  ideal_definer: z.string().default("gpt-5.6-sol"),
+  judge: z.string().default("gpt-5.6-terra"),
+  jury: z.array(z.string()).min(1).default(["gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol"]),
+});
+
 const configZ = z.object({
   version: z.literal(1).default(1),
   task: z.string().min(1),
@@ -22,14 +50,7 @@ const configZ = z.object({
     env: z.record(z.string(), z.string()).default({}),
     permissions: z.enum(["auto-allow", "deny"]).default("auto-allow"),
   }),
-  models: z.object({
-    provider: z.literal("openai").default("openai"),
-    api_key_env: z.string().default("OPENAI_API_KEY"),
-    base_url: z.string().url().optional(),
-    ideal_definer: z.string().default("gpt-5.6-sol"),
-    judge: z.string().default("gpt-5.6-terra"),
-    jury: z.array(z.string()).min(1).default(["gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol"]),
-  }),
+  models: z.discriminatedUnion("provider", [agentModelsZ, openAIModelsZ]),
   observer: z.discriminatedUnion("type", [
     z.object({
       type: z.literal("browser"),
@@ -84,12 +105,20 @@ agent:
   args: ["@agentclientprotocol/claude-agent-acp"]
   permissions: auto-allow
 
+# By default Setpoint opens fresh standalone sessions of the same ACP agent for
+# the North Star definer, progress judge, and final jurors. No API key is needed.
 models:
-  provider: openai
-  api_key_env: OPENAI_API_KEY
-  ideal_definer: gpt-5.6-sol
-  judge: gpt-5.6-terra
-  jury: [gpt-5.6-sol, gpt-5.6-sol, gpt-5.6-sol]
+  provider: agent
+  permissions: deny
+  ideal_definer: default
+  judge: default
+  jury: [default, default, default]
+
+# Optional: define stronger/different standalone-agent profiles and reference
+# their names above. Command/args/env inherit from the main coding agent.
+# profiles:
+#   strong:
+#     args: ["@agentclientprotocol/claude-agent-acp", "--model", "<model>"]
 
 observer:
   type: browser
