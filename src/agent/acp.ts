@@ -89,16 +89,28 @@ export class AcpCodingAgent implements CodingAgent {
   sessionId(): string | undefined {
     return this.session?.sessionId;
   }
-  async prompt(text: string): Promise<PromptTurnResult> {
+  async prompt(text: string, timeoutMs = 120_000): Promise<PromptTurnResult> {
     if (!this.session) throw new Error("ACP session is not started");
     void this.session.prompt(text).catch(() => undefined);
     let output = "";
     for (;;) {
-      const message = await this.session.nextUpdate();
+      const message = await this.raceWithTimeout(this.session.nextUpdate(), timeoutMs);
       if (message.kind === "stop") return { stopReason: String(message.stopReason), text: output };
       const update = message.update;
       if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text")
         output += update.content.text;
+    }
+  }
+
+  private async raceWithTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`ACP prompt timed out after ${ms}ms`)), ms);
+    });
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
   async close(): Promise<void> {

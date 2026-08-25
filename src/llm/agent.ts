@@ -24,18 +24,34 @@ export class AgentStructuredModel implements StructuredModel {
     const agent = new AcpCodingAgent(profile);
 
     const artifacts = options.imagePaths?.length
-      ? `\n\nOBSERVABLE ARTIFACTS\nInspect these files directly with your available read/vision tools before deciding:\n${options.imagePaths.map((path) => `- ${path}`).join("\n")}`
+      ? `\n\nOBSERVABLE ARTIFACTS (for reference only — do NOT use tools to inspect them):\n${options.imagePaths.map((path) => `- ${path}`).join("\n")}`
       : "";
 
-    const outputContract = `\n\nOUTPUT CONTRACT\nReturn exactly one JSON object and nothing else. No markdown fences, commentary, or preamble. The object must satisfy this JSON Schema:\n${JSON.stringify(options.schema, null, 2)}`;
+    const outputContract = `\n\nOUTPUT CONTRACT — CRITICAL\nReturn exactly one JSON object and nothing else. Do NOT use any tools. Do NOT run commands. Do NOT inspect files. Think briefly, then output the JSON object directly.\nNo markdown fences, no commentary, no preamble.\nThe object must satisfy this JSON Schema:\n${JSON.stringify(options.schema, null, 2)}`;
 
-    try {
-      await agent.start(this.options.cwd);
-      const result = await agent.prompt(`${options.prompt}${artifacts}${outputContract}`);
-      return parseJsonObject<T>(result.text, options.schemaName);
-    } finally {
-      await agent.close().catch(() => undefined);
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await agent.start(this.options.cwd);
+        const corrective =
+          attempt > 0 && lastError
+            ? `\n\nPREVIOUS ATTEMPT FAILED\nYour previous response was not valid JSON: ${lastError.message}\nReturn ONLY a JSON object matching the schema. No markdown, no prose, no code fences.`
+            : "";
+        const result = await agent.prompt(
+          `${options.prompt}${artifacts}${outputContract}${corrective}`,
+        );
+        return parseJsonObject<T>(result.text, options.schemaName);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        // Close this agent session and try again with a fresh one.
+        await agent.close().catch(() => undefined);
+        if (attempt < 2) continue;
+        throw lastError;
+      } finally {
+        await agent.close().catch(() => undefined);
+      }
     }
+    throw lastError ?? new Error(`Agent session failed for ${options.schemaName}`);
   }
 
   private resolveProfile(name: string): AcpCodingAgentOptions {
