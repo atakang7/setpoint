@@ -10,5 +10,9 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
-  { ignores: ["dist/**", "node_modules/**"] },
+  {
+    files: ["**/*.mjs"],
+    languageOptions: { globals: globals.node },
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 );

@@ -27,43 +27,47 @@ export const juryVerdictZ = z.object({
 });
 
 export const NORTH_STAR_JSON_SCHEMA = {
-  type: "object", additionalProperties: false,
+  type: "object",
+  additionalProperties: false,
   properties: {
     vision: { type: "string" },
     experience: { type: "array", items: { type: "string" } },
     quality_bar: { type: "string" },
     avoid: { type: "array", items: { type: "string" } },
     guidance: {
-      type: "object", additionalProperties: false,
+      type: "object",
+      additionalProperties: false,
       properties: {
         reasoning: { type: "string" },
         recommendations: { type: "array", items: { type: "string" } },
-        strength: { type: "string", enum: ["light", "moderate", "strong"] }
+        strength: { type: "string", enum: ["light", "moderate", "strong"] },
       },
-      required: ["reasoning", "recommendations", "strength"]
-    }
+      required: ["reasoning", "recommendations", "strength"],
+    },
   },
-  required: ["vision", "experience", "quality_bar", "avoid", "guidance"]
+  required: ["vision", "experience", "quality_bar", "avoid", "guidance"],
 } as const;
 
 export const JUDGMENT_JSON_SCHEMA = {
-  type: "object", additionalProperties: false,
+  type: "object",
+  additionalProperties: false,
   properties: {
     verdict: { type: "string", enum: ["CONTINUE", "FINAL_CANDIDATE"] },
     assessment: { type: "string" },
     critical_gaps: { type: "array", items: { type: "string" } },
     next_direction: { type: "string" },
-    confidence: { type: "number", minimum: 0, maximum: 1 }
+    confidence: { type: "number", minimum: 0, maximum: 1 },
   },
-  required: ["verdict", "assessment", "critical_gaps", "next_direction", "confidence"]
+  required: ["verdict", "assessment", "critical_gaps", "next_direction", "confidence"],
 } as const;
 
 export const JURY_JSON_SCHEMA = {
-  type: "object", additionalProperties: false,
+  type: "object",
+  additionalProperties: false,
   properties: {
     verdict: { type: "string", enum: ["PASS", "FAIL"] },
     reason: { type: "string" },
-    critical_gaps: { type: "array", items: { type: "string" } }
+    critical_gaps: { type: "array", items: { type: "string" } },
   },
-  required: ["verdict", "reason", "critical_gaps"]
+  required: ["verdict", "reason", "critical_gaps"],
 } as const;

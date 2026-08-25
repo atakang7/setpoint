@@ -4,7 +4,7 @@
 
 Setpoint is a small open-source wrapper that keeps a coding agent working until the **observable product** reaches a developer-defined North Star.
 
-Coding agents are good at producing code. They are much less reliable at deciding when the thing they produced is actually *done*. Setpoint moves that decision out of the worker loop.
+Coding agents are good at producing code. They are much less reliable at deciding when the thing they produced is actually _done_. Setpoint moves that decision out of the worker loop.
 
 ```text
 Developer intent

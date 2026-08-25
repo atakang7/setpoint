@@ -1,11 +1,4 @@
-export type RunPhase =
-  | "defining"
-  | "coding"
-  | "observing"
-  | "judging"
-  | "jury"
-  | "done"
-  | "failed";
+export type RunPhase = "defining" | "coding" | "observing" | "judging" | "jury" | "done" | "failed";
 
 export interface NorthStar {
   vision: string;

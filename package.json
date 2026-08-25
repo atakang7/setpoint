@@ -4,10 +4,16 @@
   "description": "Outcome control for coding agents.",
   "type": "module",
   "license": "MIT",
-  "bin": { "setpoint": "./dist/cli.js" },
+  "bin": {
+    "setpoint": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
@@ -18,7 +24,9 @@
     "test:watch": "vitest",
     "check": "npm run format:check && npm run lint && npm run test && npm run build"
   },
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.4.0",
     "commander": "^15.0.0",
