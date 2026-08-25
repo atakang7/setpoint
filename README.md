@@ -4,40 +4,38 @@
 
 Setpoint is a small open-source wrapper that keeps a coding agent working until the **observable product** reaches a developer-defined North Star.
 
-Coding agents are good at producing code. They are much less reliable at deciding when the thing they produced is actually _done_. Setpoint moves that decision out of the worker loop.
-
 ```text
 Developer intent
       ↓
-North Star Definer   ← strongest model, once
+North Star Definer      fresh standalone agent session
       ↓
-Persistent ACP coding-agent session
+Persistent coding-agent session
       ↓ agent stops
-Observer             ← browser screenshots / command behavior
+Observer                browser / command / product state
       ↓
-Progress Judge       ← CONTINUE or FINAL_CANDIDATE
+Progress Judge          fresh standalone agent session
       ↓                     ↓
-   resume coder          3 fresh jurors
+   CONTINUE           FINAL_CANDIDATE
+      │                     ↓
+      └── same coder      fresh jurors
                               ↓
-                       PASS or resume coder
+                       PASS or same coder
 ```
-
-The invariant is deliberately simple:
 
 > **Setpoint evaluates what was produced, not how it was produced.**
 
-It does not care whether the worker used React, Svelte, a terrible abstraction, or a beautiful one. If the observable result reaches the North Star, it passes. If it does not, the worker keeps going.
+The coding agent is a replaceable worker. Setpoint owns the destination, the observation loop, and the decision to stop.
 
-## Why this exists
+## Why
 
-A large amount of developer time with coding agents is still spent saying some variation of:
+A surprising amount of coding-agent supervision is still a developer repeatedly saying:
 
-- "yes, continue"
-- "this is technically done but it still looks bad"
+- "continue"
+- "technically done, but still bad"
 - "that is not what I meant"
-- "stop adding random things and make the actual product better"
+- "stop adding random things and improve the actual product"
 
-Setpoint turns that feedback loop into an autopilot.
+Setpoint turns that loop into autopilot.
 
 ## North Star, not a spec
 
@@ -49,65 +47,40 @@ task: >
   serious Apple/Microsoft launch, not a generic AI landing page.
 ```
 
-A strong model runs once and compiles that into a frozen North Star such as:
+A strong standalone agent runs once and defines the finished reality: its character, experience, quality bar, visible failure modes, and optional expert guidance. It does **not** turn the request into Jira tickets or implementation requirements.
 
-```json
-{
-  "vision": "A confident product launch experience where the product itself carries the story.",
-  "experience": [
-    "The product feels important immediately.",
-    "The experience progresses deliberately rather than feeling like unrelated sections.",
-    "Motion communicates capability instead of decorating the page."
-  ],
-  "quality_bar": "Would not look out of place on the launch page of a serious, well-funded developer product.",
-  "avoid": [
-    "generic AI landing-page aesthetics",
-    "meaningless floating objects",
-    "template-like feature-card repetition"
-  ],
-  "guidance": {
-    "reasoning": "High-quality motion is easier to control with a mature sequencing tool than raw ad-hoc CSS.",
-    "recommendations": ["Consider a timeline-based motion library and inspect actual renders."],
-    "strength": "strong"
-  }
-}
-```
+Guidance may recommend a library, rendering strategy, or implementation direction when that materially raises the worker's odds of success. Guidance is advice, never part of the pass criteria.
 
-`guidance` is expert leverage, **not a requirement**. A coder may ignore every recommendation and still pass if the observable result is excellent.
+## Session topology
 
-## Core behavior
+Setpoint is intentionally built around agent sessions:
 
-1. **Define once.** A strong model creates the frozen North Star.
-2. **Work persistently.** Setpoint starts an ACP coding-agent session and gives it the developer intent, North Star, and optional guidance.
-3. **Observe reality.** When the coding agent stops, Setpoint captures the product itself.
-4. **Judge the gap.** The progress judge sees the North Star and current observable result, not the source code.
-5. **Push again.** If the result is not there, Setpoint sends concise direction back into the same coding-agent session.
-6. **Require a jury.** A progress judge can never pass a run. It can only nominate a `FINAL_CANDIDATE`.
-7. **Fresh final judgment.** Independent jurors see only the original intent, frozen North Star, and candidate product. They do not see coder claims or previous judge opinions.
+| Role | Session lifecycle |
+| --- | --- |
+| North Star Definer | fresh, once |
+| Coder | **persistent for the whole run** |
+| Progress Judge | fresh on every coder stop |
+| Final Jurors | fresh and independent |
 
-By default, the final jury must be unanimous.
+The same ACP agent can back every role by default. Users can override reasoning profiles to use a stronger or different standalone agent for the Definer, Judge, or Jury.
+
+This means **no separate LLM API key is required on the default path**. If your coding agent is already authenticated, Setpoint can orchestrate standalone sessions of it.
+
+An OpenAI API-backed structured model remains supported as an optional adapter.
 
 ## ACP first
 
-Setpoint uses the stable **Agent Client Protocol (ACP)** for the worker boundary. The coding agent is a replaceable actuator; Setpoint owns the mission and run state.
+Setpoint uses the stable **Agent Client Protocol (ACP)** as its preferred session boundary.
 
-Current ACP adapters include:
-
-- Claude Agent: `@agentclientprotocol/claude-agent-acp`
-- Codex: `@agentclientprotocol/codex-acp`
-
-Any stdio ACP agent can be used by changing `agent.command` and `agent.args`.
+Any stdio ACP agent can be configured through `command` + `args`. Non-ACP terminal agents can be supported later through a PTY adapter without changing the Setpoint state machine.
 
 ## Requirements
 
 - Node.js 22.12+
-- An ACP coding-agent command
-- `OPENAI_API_KEY` for the built-in model provider
+- an authenticated ACP-compatible agent command
 - Chromium for browser observation (`npx playwright install chromium`)
 
 ## Install from source
-
-The repository starts at `0.1.0`; until an npm release exists, install it from source:
 
 ```bash
 git clone https://github.com/atakang7/setpoint.git
@@ -118,7 +91,7 @@ npm link
 npx playwright install chromium
 ```
 
-Then in the project you want Setpoint to control:
+Then inside the project you want Setpoint to control:
 
 ```bash
 setpoint init
@@ -141,26 +114,67 @@ agent:
   args: ["@agentclientprotocol/claude-agent-acp"]
   permissions: auto-allow
 
+# Fresh standalone sessions for Definer, Judge, and Jury.
+# By default these inherit the coding agent command + args above.
 models:
-  provider: openai
-  api_key_env: OPENAI_API_KEY
-  ideal_definer: gpt-5.6-sol
-  judge: gpt-5.6-terra
-  jury: [gpt-5.6-sol, gpt-5.6-sol, gpt-5.6-sol]
+  provider: agent
+  permissions: deny
+  ideal_definer: default
+  judge: default
+  jury: [default, default, default]
 
 observer:
   type: browser
   url: http://localhost:3000
   start_command: npm run dev
+  full_page: true
+  viewports:
+    - { width: 1440, height: 1000 }
+    - { width: 390, height: 844 }
 
 autopilot:
   max_iterations: 20
   require_unanimous_jury: true
 ```
 
+## Stronger/different reasoning agents
+
+Reasoning profiles override the default standalone agent runtime. The exact command/arguments are agent-specific; Setpoint does not hard-code model names.
+
+```yaml
+models:
+  provider: agent
+  permissions: deny
+  ideal_definer: strong
+  judge: strong
+  jury: [strong, strong, strong]
+
+  profiles:
+    strong:
+      command: my-acp-agent
+      args: ["--some-agent-specific-model-option", "strong-model"]
+```
+
+A profile can override `command`, `args`, `env`, or `permissions`. Missing fields inherit from the main coding-agent configuration.
+
+## Optional API provider
+
+If someone explicitly prefers API-backed evaluators, the previous OpenAI path remains available:
+
+```yaml
+models:
+  provider: openai
+  api_key_env: OPENAI_API_KEY
+  ideal_definer: gpt-5.6-sol
+  judge: gpt-5.6-terra
+  jury: [gpt-5.6-sol, gpt-5.6-sol, gpt-5.6-sol]
+```
+
+This is optional, not the Setpoint default architecture.
+
 ## Prompt control
 
-Setpoint ships strong role prompts, but prompt personality is first-class configuration. User text is appended to non-overridable Setpoint invariants, so users can make a judge harsher without accidentally deleting the core contract.
+Prompts are first-class configuration, but Setpoint appends them to non-overridable invariants so a user can make a judge harsher without deleting the outcome-control contract.
 
 ```yaml
 prompts:
@@ -177,34 +191,24 @@ prompts:
     Pass only if another iteration would be polish rather than repair.
 ```
 
-The non-overridable rules include:
+Core invariants include:
 
 - observable outcome beats implementation details
-- the North Star cannot move toward the current output
-- the coder's claim of completion is not evidence
-- guidance is advisory, not part of the pass criteria
-- only the fresh jury can issue `PASS`
+- the North Star never moves toward a mediocre current result
+- coder claims of completion are not evidence
+- guidance is advisory
+- the progress judge cannot issue PASS
+- final jurors are fresh and independent
 
 ## Observers
 
 ### Browser
 
-The browser observer starts an optional development command, waits for the configured URL, then captures multiple viewports with Playwright. Screenshots are passed directly to vision-capable judges.
-
-```yaml
-observer:
-  type: browser
-  url: http://localhost:3000
-  start_command: npm run dev
-  full_page: true
-  viewports:
-    - { width: 1440, height: 1000 }
-    - { width: 390, height: 844 }
-```
+The browser observer starts an optional dev command, waits for the configured URL, captures multiple viewports with Playwright, and exposes those artifacts to the judging session.
 
 ### Command
 
-For CLIs, APIs, test harnesses, render commands, or any non-browser product, Setpoint can judge observable command output.
+For CLIs, APIs, render commands, test harnesses, or other non-browser products:
 
 ```yaml
 observer:
@@ -213,11 +217,9 @@ observer:
   timeout_ms: 60000
 ```
 
-The observer interface is intentionally tiny, so video, desktop-app, game, and richer interaction observers can be added without changing the engine.
+## State
 
-## Run state
-
-Setpoint owns the run, not the coding-agent conversation.
+Setpoint owns the run, not the coding-agent conversation:
 
 ```text
 .setpoint/
@@ -230,35 +232,34 @@ Setpoint owns the run, not the coding-agent conversation.
       observations/
       judgments/
       jury/
-      observation-001/
-      observation-002/
-      ...
 ```
 
-A run survives as a coherent record even if the worker implementation changes later.
+A failed jury returns consolidated visible criticism to the **same persistent coder session**. A new progress judgment is made by a **new standalone judge session**.
 
 ## CLI
 
 ```bash
-setpoint init                 # create setpoint.yaml
-setpoint doctor               # validate local prerequisites
-setpoint run                  # start autopilot
-setpoint inspect              # inspect latest run state
+setpoint init
+setpoint doctor
+setpoint run
+setpoint inspect
 setpoint --version
 ```
 
-## Safety note
+## Safety
 
-`agent.permissions: auto-allow` is designed for autonomous coding runs and may approve tool requests offered by the ACP agent. Run Setpoint in a repository, sandbox, container, VM, or account boundary appropriate for the code being executed. Use `permissions: deny` when you want the ACP agent's permission requests rejected.
+`agent.permissions: auto-allow` is intended for autonomous coding and can approve mutation/tool requests from the coding worker. Run Setpoint inside an appropriate repository, sandbox, container, VM, or account boundary.
+
+Reasoning sessions default to `permissions: deny`: judges should inspect reality, not secretly fix it themselves.
 
 ## Design principles
 
-- **Outcome over implementation.** Code is a means, not the evaluation target.
-- **North Star over spec.** Define the finished reality without turning the developer into a PM writing acceptance criteria.
-- **Strong intelligence at the high-leverage point.** Spend the best model on defining "good" once; use cheaper models where repetition dominates.
-- **Persistent worker, fresh judges.** Implementation context should persist. Evaluation context should stay clean.
-- **Frozen destination.** The target never becomes easier because the worker produced something mediocre.
-- **Few knobs.** Great defaults, explicit overrides, no workflow DSL.
+- **Outcome over implementation.**
+- **North Star over specification bureaucracy.**
+- **Best intelligence at the highest-leverage decision point.**
+- **Persistent worker, fresh evaluators.**
+- **Frozen destination.**
+- **Few knobs and strong defaults.**
 
 ## Development
 
@@ -267,7 +268,7 @@ npm install
 npm run check
 ```
 
-CI runs formatting, linting, tests, and TypeScript build on supported Node versions. Releases are managed with Release Please and semantic versioning.
+CI covers formatting, linting, tests, and TypeScript builds. Releases use semantic versioning / Release Please.
 
 See [docs/architecture.md](docs/architecture.md) for the state machine and extension boundaries.
 
