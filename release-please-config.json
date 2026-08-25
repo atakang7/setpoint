@@ -1,0 +1,9 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "setpoint-agent",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
