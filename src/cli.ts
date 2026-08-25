@@ -70,16 +70,35 @@ program
       process.exitCode = 1;
       return;
     }
+
     checks.push([
-      config.models.api_key_env,
-      Boolean(process.env[config.models.api_key_env]),
-      `environment variable ${config.models.api_key_env}`,
-    ]);
-    checks.push([
-      "agent",
+      "coder agent",
       await commandExists(config.agent.command),
       `${config.agent.command} on PATH`,
     ]);
+
+    if (config.models.provider === "openai") {
+      checks.push([
+        config.models.api_key_env,
+        Boolean(process.env[config.models.api_key_env]),
+        `environment variable ${config.models.api_key_env}`,
+      ]);
+    } else {
+      const evaluatorCommands = new Set<string>([
+        config.models.command ?? config.agent.command,
+        ...Object.values(config.models.profiles)
+          .map((profile) => profile.command)
+          .filter((command): command is string => Boolean(command)),
+      ]);
+      for (const command of evaluatorCommands) {
+        checks.push([
+          "reasoning agent",
+          await commandExists(command),
+          `${command} on PATH (fresh definer/judge/jury sessions)`,
+        ]);
+      }
+    }
+
     if (config.observer.type === "browser") {
       let browserExists = false;
       try {
