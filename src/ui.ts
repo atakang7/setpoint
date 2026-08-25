@@ -93,13 +93,11 @@ function serializeSnapshot(snapshot: RunSnapshot, config: SetpointConfig): Recor
     maxIterations: config.autopilot.max_iterations,
     iterations: snapshot.iterations.map((entry) => ({
       ...entry,
-      screenshots: (entry.observation?.artifacts ?? [])
-        .filter(isImagePath)
-        .map((path) => ({
-          path,
-          name: basename(path),
-          url: `/artifact?path=${encodeURIComponent(path)}`,
-        })),
+      screenshots: (entry.observation?.artifacts ?? []).filter(isImagePath).map((path) => ({
+        path,
+        name: basename(path),
+        url: `/artifact?path=${encodeURIComponent(path)}`,
+      })),
     })),
   };
 }
@@ -126,7 +124,12 @@ function sendJson(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, "application/json; charset=utf-8", `${JSON.stringify(value)}\n`);
 }
 
-function send(res: ServerResponse, status: number, contentType: string, body: string | Buffer): void {
+function send(
+  res: ServerResponse,
+  status: number,
+  contentType: string,
+  body: string | Buffer,
+): void {
   res.writeHead(status, {
     "content-type": contentType,
     "cache-control": "no-store",

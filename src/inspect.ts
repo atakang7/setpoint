@@ -35,7 +35,9 @@ export async function loadRunSnapshot(
 
   const root = resolve(cwd, baseDir);
   const runDir = join(root, "runs", record.id);
-  const northStar = await readJson<NorthStar>(record.north_star_path ?? join(runDir, "north-star.json"));
+  const northStar = await readJson<NorthStar>(
+    record.north_star_path ?? join(runDir, "north-star.json"),
+  );
   const iterations: IterationSnapshot[] = [];
 
   for (let iteration = 1; iteration <= record.iteration; iteration++) {
@@ -75,10 +77,14 @@ export function formatRunSnapshot(snapshot: RunSnapshot, config: SetpointConfig)
   if (northStar) lines.push(`  ${truncate(northStar.vision, 110)}`);
   lines.push("");
   lines.push("CODER");
-  lines.push(`  agent      ${config.agent.command}${config.agent.args.length ? ` ${config.agent.args.join(" ")}` : ""}`);
+  lines.push(
+    `  agent      ${config.agent.command}${config.agent.args.length ? ` ${config.agent.args.join(" ")}` : ""}`,
+  );
   lines.push(`  session    ${record.agent_session_id ?? "pending"}`);
   lines.push(`  prompts    ${iterations.filter((entry) => entry.turn).length}`);
-  lines.push(`  status     ${record.phase === "coding" ? "working" : record.agent_session_id ? "idle" : "pending"}`);
+  lines.push(
+    `  status     ${record.phase === "coding" ? "working" : record.agent_session_id ? "idle" : "pending"}`,
+  );
   lines.push("");
   lines.push("OBSERVER");
   lines.push(`  type       ${config.observer.type}`);
@@ -87,16 +93,24 @@ export function formatRunSnapshot(snapshot: RunSnapshot, config: SetpointConfig)
   if (latest?.observation) lines.push(`  latest     ${truncate(latest.observation.summary, 100)}`);
   lines.push("");
   lines.push("JUDGE");
-  lines.push(`  agent      ${config.models.provider === "agent" ? config.models.judge : config.models.judge}`);
-  lines.push(`  status     ${record.phase === "judging" ? "evaluating" : latestJudged?.verdict ?? "pending"}`);
+  lines.push(
+    `  agent      ${config.models.provider === "agent" ? config.models.judge : config.models.judge}`,
+  );
+  lines.push(
+    `  status     ${record.phase === "judging" ? "evaluating" : (latestJudged?.verdict ?? "pending")}`,
+  );
   if (latestJudged) {
     lines.push(`  direction  ${truncate(latestJudged.next_direction, 100)}`);
-    if (latestJudged.critical_gaps[0]) lines.push(`  gap        ${truncate(latestJudged.critical_gaps[0], 100)}`);
+    if (latestJudged.critical_gaps[0])
+      lines.push(`  gap        ${truncate(latestJudged.critical_gaps[0], 100)}`);
   }
   lines.push("");
   lines.push("JURY");
-  lines.push(`  status     ${record.phase === "jury" ? "evaluating" : latestJury ? jurySummary(latestJury) : "not reached"}`);
-  if (latestJury) lines.push(`  verdicts   ${latestJury.map((verdict) => verdict.verdict).join(" / ")}`);
+  lines.push(
+    `  status     ${record.phase === "jury" ? "evaluating" : latestJury ? jurySummary(latestJury) : "not reached"}`,
+  );
+  if (latestJury)
+    lines.push(`  verdicts   ${latestJury.map((verdict) => verdict.verdict).join(" / ")}`);
   lines.push("");
   lines.push("HISTORY");
   if (!iterations.some((entry) => entry.judgment || entry.jury)) {
