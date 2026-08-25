@@ -23,8 +23,8 @@ export class AgentStructuredModel implements StructuredModel {
     const profile = this.resolveProfile(options.model);
     const agent = new AcpCodingAgent(profile);
 
-    const artifacts = options.imagePaths?.length
-      ? `\n\nOBSERVABLE ARTIFACTS (for reference only — do NOT use tools to inspect them):\n${options.imagePaths.map((path) => `- ${path}`).join("\n")}`
+    const visualContext = options.imagePaths?.length
+      ? "\n\nVISUAL EVIDENCE\nThe browser screenshots are attached directly to this prompt as images. Judge the pixels you see. Do NOT use tools or inspect files."
       : "";
 
     const outputContract = `\n\nOUTPUT CONTRACT — CRITICAL\nReturn exactly one JSON object and nothing else. Do NOT use any tools. Do NOT run commands. Do NOT inspect files. Think briefly, then output the JSON object directly.\nNo markdown fences, no commentary, no preamble.\nThe object must satisfy this JSON Schema:\n${JSON.stringify(options.schema, null, 2)}`;
@@ -37,9 +37,10 @@ export class AgentStructuredModel implements StructuredModel {
           attempt > 0 && lastError
             ? `\n\nPREVIOUS ATTEMPT FAILED\nYour previous response was not valid JSON: ${lastError.message}\nReturn ONLY a JSON object matching the schema. No markdown, no prose, no code fences.`
             : "";
-        const result = await agent.prompt(
-          `${options.prompt}${artifacts}${outputContract}${corrective}`,
-        );
+        const prompt = `${options.prompt}${visualContext}${outputContract}${corrective}`;
+        const result = options.imagePaths?.length
+          ? await agent.promptWithImages(prompt, options.imagePaths)
+          : await agent.prompt(prompt);
         return parseJsonObject<T>(result.text, options.schemaName);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
