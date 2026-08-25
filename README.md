@@ -55,12 +55,12 @@ Guidance may recommend a library, rendering strategy, or implementation directio
 
 Setpoint is intentionally built around agent sessions:
 
-| Role | Session lifecycle |
-| --- | --- |
-| North Star Definer | fresh, once |
-| Coder | **persistent for the whole run** |
-| Progress Judge | fresh on every coder stop |
-| Final Jurors | fresh and independent |
+| Role               | Session lifecycle                |
+| ------------------ | -------------------------------- |
+| North Star Definer | fresh, once                      |
+| Coder              | **persistent for the whole run** |
+| Progress Judge     | fresh on every coder stop        |
+| Final Jurors       | fresh and independent            |
 
 The same ACP agent can back every role by default. Users can override reasoning profiles to use a stronger or different standalone agent for the Definer, Judge, or Jury.
 

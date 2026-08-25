@@ -58,7 +58,8 @@ function parseJsonObject<T>(text: string, label: string): T {
   if (fenced) candidates.push(fenced);
   const firstBrace = trimmed.indexOf("{");
   const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
+  if (firstBrace >= 0 && lastBrace > firstBrace)
+    candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
 
   for (const candidate of candidates) {
     try {
