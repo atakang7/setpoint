@@ -6,7 +6,8 @@ import { chromium } from "playwright";
 import { SetpointEngine } from "./engine.js";
 import { createRuntime } from "./factory.js";
 import { initConfig, loadConfig, type SetpointConfig } from "./config.js";
-import { RunStorage } from "./storage.js";
+import { formatRunSnapshot, loadRunSnapshot, watchRun } from "./inspect.js";
+import { startRunUi } from "./ui.js";
 
 const program = new Command();
 program.name("setpoint").description("Outcome control for coding agents.").version("0.1.0");
@@ -36,16 +37,42 @@ program
   });
 program
   .command("inspect")
-  .description("Show the latest Setpoint run")
+  .description("Inspect the latest Setpoint run")
   .option("-c, --config <path>", "config path", "setpoint.yaml")
-  .action(async ({ config: configPath }) => {
+  .option("-w, --watch", "continuously refresh until the run finishes")
+  .option("--json", "print the complete reconstructed run snapshot as JSON")
+  .option("--interval <ms>", "watch refresh interval in milliseconds", "1000")
+  .action(async ({ config: configPath, watch, json, interval }) => {
     const config = await loadConfig(configPath);
-    const record = await RunStorage.readLatest(config.run_dir);
-    if (!record) {
+    if (watch) {
+      const intervalMs = Number(interval);
+      if (!Number.isFinite(intervalMs) || intervalMs < 100)
+        throw new Error("--interval must be a number of at least 100ms");
+      if (json) console.warn("--json is ignored while --watch is active");
+      await watchRun(config, intervalMs);
+      return;
+    }
+
+    const snapshot = await loadRunSnapshot(config.run_dir);
+    if (!snapshot) {
       console.log("No Setpoint runs found.");
       return;
     }
-    console.log(JSON.stringify(record, null, 2));
+    console.log(json ? JSON.stringify(snapshot, null, 2) : formatRunSnapshot(snapshot, config));
+  });
+program
+  .command("ui")
+  .description("Open a read-only live browser dashboard for the latest run")
+  .option("-c, --config <path>", "config path", "setpoint.yaml")
+  .option("--host <host>", "listen host", "127.0.0.1")
+  .option("--port <port>", "listen port", "3210")
+  .option("--no-open", "do not automatically open a browser")
+  .action(async ({ config: configPath, host, port, open }) => {
+    const config = await loadConfig(configPath);
+    const portNumber = Number(port);
+    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535)
+      throw new Error("--port must be an integer between 1 and 65535");
+    await startRunUi(config, { host, port: portNumber, open });
   });
 program
   .command("doctor")
