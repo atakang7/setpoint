@@ -1,4 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { extname } from "node:path";
 import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
 import type { CodingAgent, PromptTurnResult } from "../types.js";
@@ -90,8 +92,32 @@ export class AcpCodingAgent implements CodingAgent {
     return this.session?.sessionId;
   }
   async prompt(text: string, timeoutMs = 120_000): Promise<PromptTurnResult> {
+    return this.promptBlocks([{ type: "text", text }], timeoutMs);
+  }
+
+  async promptWithImages(
+    text: string,
+    imagePaths: string[],
+    timeoutMs = 120_000,
+  ): Promise<PromptTurnResult> {
+    const blocks: acp.ContentBlock[] = [{ type: "text", text }];
+    for (const path of imagePaths) {
+      const bytes = await readFile(path);
+      blocks.push({
+        type: "image",
+        data: bytes.toString("base64"),
+        mimeType: mimeFor(path),
+      });
+    }
+    return this.promptBlocks(blocks, timeoutMs);
+  }
+
+  private async promptBlocks(
+    blocks: acp.ContentBlock[],
+    timeoutMs: number,
+  ): Promise<PromptTurnResult> {
     if (!this.session) throw new Error("ACP session is not started");
-    void this.session.prompt(text).catch(() => undefined);
+    void this.session.prompt(blocks).catch(() => undefined);
     let output = "";
     for (;;) {
       const message = await this.raceWithTimeout(this.session.nextUpdate(), timeoutMs);
@@ -129,5 +155,19 @@ export class AcpCodingAgent implements CodingAgent {
     } catch {
       /* connection errors during shutdown are expected */
     }
+  }
+}
+
+function mimeFor(path: string): string {
+  switch (extname(path).toLowerCase()) {
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".webp":
+      return "image/webp";
+    default:
+      throw new Error(`Unsupported ACP image type: ${path}`);
   }
 }
