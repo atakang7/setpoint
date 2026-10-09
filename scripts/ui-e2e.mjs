@@ -148,7 +148,7 @@ try {
     () => document.getElementById("run-id")?.textContent === "visual-fixture",
   );
   await page.getByText("A working developer dashboard").waitFor();
-  await page.getByText("FINAL_CANDIDATE").waitFor();
+  await page.locator("#judgment").getByText("FINAL_CANDIDATE").waitFor();
   await page.screenshot({ path: join(evidenceDir, "ui-desktop.png"), fullPage: true });
   console.log(
     "SETPOINT_UI_DESKTOP_JPEG:" +
