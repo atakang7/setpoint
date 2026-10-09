@@ -22,8 +22,12 @@ describe("observer failure boundaries", () => {
     const url = `http://127.0.0.1:${port}`;
     const startCommand = `node -e "require('node:http').createServer((q,s)=>{s.writeHead(404);s.end('not ready')}).listen(${port},'127.0.0.1')"`;
     const observer = new BrowserObserver({
-      cwd, url, startCommand, readyTimeoutMs: 1100,
-      fullPage: false, viewports: [{ width: 800, height: 600 }],
+      cwd,
+      url,
+      startCommand,
+      readyTimeoutMs: 1100,
+      fullPage: false,
+      viewports: [{ width: 800, height: 600 }],
     });
 
     await expect(observer.start()).rejects.toThrow(/did not become ready/);
@@ -41,8 +45,11 @@ describe("observer failure boundaries", () => {
     const address = server.address();
     const port = address && typeof address !== "string" ? address.port : 0;
     const observer = new BrowserObserver({
-      cwd: process.cwd(), url: `http://127.0.0.1:${port}`,
-      readyTimeoutMs: 600, fullPage: false, viewports: [{ width: 800, height: 600 }],
+      cwd: process.cwd(),
+      url: `http://127.0.0.1:${port}`,
+      readyTimeoutMs: 600,
+      fullPage: false,
+      viewports: [{ width: 800, height: 600 }],
     });
     const started = Date.now();
     try {
