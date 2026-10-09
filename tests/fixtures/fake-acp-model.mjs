@@ -1,12 +1,13 @@
 import * as acp from "@agentclientprotocol/sdk";
 import { Writable, Readable } from "node:stream";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 
 const app = acp.agent({ name: "fake-acp-model" });
 
 const LOG_FILE = process.env.SESSION_LOG;
 const FORCE_FINAL = process.env.FORCE_FINAL_CANDIDATE === "1";
 const JURY_FAIL_FIRST = process.env.JURY_FAIL_FIRST === "1";
+const MALFORMED_ONCE_FILE = process.env.MALFORMED_ONCE_FILE;
 
 let sessionCounter = 0;
 let currentSessionId = null;
@@ -85,7 +86,11 @@ app.onRequest(acp.methods.agent.session.prompt, async (ctx) => {
   const text = ctx.params.prompt.map((b) => (b.type === "text" ? b.text : "")).join("");
   currentRole = detectRole(text);
   log("prompt");
-  const payload = JSON.stringify(jsonFor(currentRole));
+  let payload = JSON.stringify(jsonFor(currentRole));
+  if (MALFORMED_ONCE_FILE && !existsSync(MALFORMED_ONCE_FILE)) {
+    writeFileSync(MALFORMED_ONCE_FILE, "sent invalid JSON once");
+    payload = "not-json";
+  }
   await ctx.client.notify(acp.methods.client.session.update, {
     sessionId: currentSessionId,
     update: {

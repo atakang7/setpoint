@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { basename, extname, resolve, sep } from "node:path";
 import type { SetpointConfig } from "./config.js";
@@ -61,7 +61,7 @@ async function route(
       sendJson(res, 404, { error: "artifact not found" });
       return;
     }
-    const path = safeArtifactPath(snapshot.runDir, requested);
+    const path = await safeArtifactPath(snapshot.runDir, requested);
     if (!path || !isImagePath(path)) {
       sendJson(res, 403, { error: "artifact outside current run" });
       return;
@@ -102,10 +102,16 @@ function serializeSnapshot(snapshot: RunSnapshot, config: SetpointConfig): Recor
   };
 }
 
-function safeArtifactPath(runDir: string, requested: string): string | null {
-  const root = resolve(runDir);
-  const candidate = resolve(requested);
-  return candidate === root || candidate.startsWith(`${root}${sep}`) ? candidate : null;
+async function safeArtifactPath(runDir: string, requested: string): Promise<string | null> {
+  try {
+    const root = await realpath(resolve(runDir));
+    const candidate = await realpath(resolve(requested));
+    // resolve() alone is insufficient: image symlinks can point outside the
+    // current run and turn the read-only dashboard into a local-file server.
+    return candidate.startsWith(`${root}${sep}`) ? candidate : null;
+  } catch {
+    return null;
+  }
 }
 
 function imageMimeType(path: string): string {
@@ -147,6 +153,9 @@ function openBrowser(url: string): void {
         : ["xdg-open", [url]];
   try {
     const child = spawn(command[0], command[1], { detached: true, stdio: "ignore" });
+    child.on("error", () => {
+      // Opening the browser is optional; a missing xdg-open must not crash the UI.
+    });
     child.unref();
   } catch {
     // The URL is already printed; opening a browser is best-effort only.
@@ -161,7 +170,7 @@ const DASHBOARD_HTML = `<!doctype html>
 <title>Setpoint Run</title>
 <style>
 :root{color-scheme:dark;--bg:#0b0d10;--panel:#12161c;--panel2:#171c23;--line:#262d36;--text:#f2f5f8;--muted:#8993a1;--accent:#8ab4ff;--good:#7ee787;--warn:#f2cc60;--bad:#ff7b72}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.shell{max-width:1500px;margin:0 auto;padding:20px}.top{display:flex;justify-content:space-between;gap:16px;margin-bottom:16px}.brand{font-size:20px;font-weight:700}.muted{color:var(--muted)}.badge{display:inline-flex;gap:8px;align-items:center;padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}.dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}.dot.done{background:var(--good)}.dot.failed{background:var(--bad)}.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}.stack{display:grid;gap:16px}.card{min-width:0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.label{margin-bottom:8px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em}.kv{display:grid;grid-template-columns:95px minmax(0,1fr);gap:6px 10px}.kv div:nth-child(odd){color:var(--muted)}.phase{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}.phase span{padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:11px}.phase .active{border-color:var(--accent);color:var(--text);background:#182235}.phase .done{color:var(--good)}.shots,.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.shot{width:100%;display:block;border:1px solid var(--line);border-radius:9px;background:#060708}.history{display:grid;gap:8px}.history button{width:100%;padding:10px;text-align:left;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;cursor:pointer}.verdict{font-weight:700}.continue{color:var(--warn)}.pass{color:var(--good)}.fail{color:var(--bad)}.copy{white-space:pre-wrap;overflow-wrap:anywhere}.north{max-height:300px;overflow:auto}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.controls label{display:flex;align-items:center;gap:6px;color:var(--muted)}select{padding:6px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:7px}.empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:900px){.grid{grid-template-columns:1fr}.shots,.compare{grid-template-columns:1fr}.phase{grid-template-columns:repeat(3,1fr)}.shell{padding:12px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.shell{max-width:1500px;margin:0 auto;padding:20px}.top{display:flex;justify-content:space-between;gap:16px;margin-bottom:16px}.brand{font-size:20px;font-weight:700}.muted{color:var(--muted)}.badge{display:inline-flex;gap:8px;align-items:center;padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}.dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}.dot.done{background:var(--good)}.dot.failed{background:var(--bad)}.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}.stack{display:flex;flex-direction:column;gap:16px}.card{min-width:0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.label{margin-bottom:8px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em}.kv{display:grid;grid-template-columns:95px minmax(0,1fr);gap:6px 10px}.kv div:nth-child(odd){color:var(--muted)}.phase{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}.phase span{padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:11px}.phase .active{border-color:var(--accent);color:var(--text);background:#182235}.phase .done{color:var(--good)}.shots,.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.shot{width:100%;display:block;border:1px solid var(--line);border-radius:9px;background:#060708}.history{display:grid;gap:8px}.history button{width:100%;padding:10px;text-align:left;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;cursor:pointer}.verdict{font-weight:700}.continue{color:var(--warn)}.pass{color:var(--good)}.fail{color:var(--bad)}.copy{white-space:pre-wrap;overflow-wrap:anywhere}.north{max-height:300px;overflow:auto}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.controls label{display:flex;align-items:center;gap:6px;color:var(--muted)}select{padding:6px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:7px}.empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:900px){.grid{grid-template-columns:1fr}.shots,.compare{grid-template-columns:1fr}.phase{grid-template-columns:repeat(3,1fr)}.shell{padding:12px}}
 </style>
 </head>
 <body>
