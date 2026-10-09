@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { basename, extname, resolve, sep } from "node:path";
 import type { SetpointConfig } from "./config.js";
@@ -61,7 +61,7 @@ async function route(
       sendJson(res, 404, { error: "artifact not found" });
       return;
     }
-    const path = safeArtifactPath(snapshot.runDir, requested);
+    const path = await safeArtifactPath(snapshot.runDir, requested);
     if (!path || !isImagePath(path)) {
       sendJson(res, 403, { error: "artifact outside current run" });
       return;
@@ -102,10 +102,16 @@ function serializeSnapshot(snapshot: RunSnapshot, config: SetpointConfig): Recor
   };
 }
 
-function safeArtifactPath(runDir: string, requested: string): string | null {
-  const root = resolve(runDir);
-  const candidate = resolve(requested);
-  return candidate === root || candidate.startsWith(`${root}${sep}`) ? candidate : null;
+async function safeArtifactPath(runDir: string, requested: string): Promise<string | null> {
+  try {
+    const root = await realpath(resolve(runDir));
+    const candidate = await realpath(resolve(requested));
+    // resolve() alone is insufficient: image symlinks can point outside the
+    // current run and turn the read-only dashboard into a local-file server.
+    return candidate.startsWith(`${root}${sep}`) ? candidate : null;
+  } catch {
+    return null;
+  }
 }
 
 function imageMimeType(path: string): string {
@@ -147,6 +153,9 @@ function openBrowser(url: string): void {
         : ["xdg-open", [url]];
   try {
     const child = spawn(command[0], command[1], { detached: true, stdio: "ignore" });
+    child.on("error", () => {
+      // Opening the browser is optional; a missing xdg-open must not crash the UI.
+    });
     child.unref();
   } catch {
     // The URL is already printed; opening a browser is best-effort only.
