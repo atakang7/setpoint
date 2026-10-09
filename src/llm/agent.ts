@@ -21,8 +21,6 @@ export class AgentStructuredModel implements StructuredModel {
     imagePaths?: string[];
   }): Promise<T> {
     const profile = this.resolveProfile(options.model);
-    const agent = new AcpCodingAgent(profile);
-
     const visualContext = options.imagePaths?.length
       ? "\n\nVISUAL EVIDENCE\nThe browser screenshots are attached directly to this prompt as images. Judge the pixels you see. Do NOT use tools or inspect files."
       : "";
@@ -31,6 +29,8 @@ export class AgentStructuredModel implements StructuredModel {
 
     let lastError: Error | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
+      // A failed session must never be reused: close() releases its stream.
+      const agent = new AcpCodingAgent(profile);
       try {
         await agent.start(this.options.cwd);
         const corrective =
@@ -44,10 +44,7 @@ export class AgentStructuredModel implements StructuredModel {
         return parseJsonObject<T>(result.text, options.schemaName);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        // Close this agent session and try again with a fresh one.
-        await agent.close().catch(() => undefined);
-        if (attempt < 2) continue;
-        throw lastError;
+        if (attempt === 2) throw lastError;
       } finally {
         await agent.close().catch(() => undefined);
       }
