@@ -1,0 +1,23 @@
+name: Temporary formatter
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Preview Prettier output
+        run: |
+          npx prettier --write src/observer/browser.ts src/observer/command.ts tests/observer-lifecycle.test.ts
+          for file in src/observer/browser.ts src/observer/command.ts tests/observer-lifecycle.test.ts; do
+            echo "FORMAT_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "FORMAT_END:$file"
+          done
