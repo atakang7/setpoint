@@ -22,6 +22,16 @@ const png = Buffer.from(
 );
 const screenshotPath = join(shotDir, "1440x1000.png");
 await writeFile(screenshotPath, png);
+// Render a real Chromium screenshot as the observation fixture. This is not
+// a production deployment or synthetic pass metric.
+const fixtureBrowser = await chromium.launch({ headless: true });
+try {
+  const fixturePage = await fixtureBrowser.newPage({ viewport: { width: 1440, height: 900 } });
+  await fixturePage.setContent("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><style>\n*{box-sizing:border-box}body{margin:0;padding:60px 76px;background:#f5f7fa;color:#153046;font:22px/1.5 system-ui,Arial}\nheader{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #d5dfe8;padding-bottom:24px;margin-bottom:80px}\nheader b{font-size:23px}header small{font-size:16px;color:#577287}\n.label{font-size:16px;text-transform:uppercase;letter-spacing:.14em;color:#138074;font-weight:750}\nh1{font-size:64px;letter-spacing:-.045em;line-height:1.05;margin:20px 0}\np{color:#60798b;max-width:640px}\n.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:68px}\n.metric{padding:28px;background:#fff;border:1px solid #dae3e9;border-radius:12px}\n.metric span{display:block;color:#60798b;font-size:17px}.metric strong{display:block;font-size:43px;margin:10px 0}\n.metric em{font-size:16px;font-style:normal;color:#138074}\n</style></head><body>\n<header><b>Runtime Operations</b><small>SETPOINT / VISUAL TEST FIXTURE</small></header>\n<div class=\"label\">Product observation</div>\n<h1>Infrastructure at a glance.</h1>\n<p>A rendered browser fixture used to validate Setpoint’s screenshot capture, artifact isolation, and judgment dashboard.</p>\n<div class=\"metrics\">\n<div class=\"metric\"><span>Service health</span><strong>Healthy</strong><em>All checks green</em></div>\n<div class=\"metric\"><span>Active services</span><strong>12</strong><em>Reference fixture</em></div>\n<div class=\"metric\"><span>Current deployment</span><strong>v1.0</strong><em>Fixture only</em></div>\n</div></body></html>");
+  await fixturePage.screenshot({ path: screenshotPath, fullPage: true });
+} finally {
+  await fixtureBrowser.close();
+}
 const outsidePath = join(dir, "secret.png");
 await writeFile(outsidePath, png);
 const linkedPath = join(shotDir, "linked-secret.png");
