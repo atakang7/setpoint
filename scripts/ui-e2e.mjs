@@ -132,9 +132,7 @@ try {
   }
   assert(ready, "Setpoint UI did not serve its persisted run: " + serverOutput);
 
-  const allowed = await fetch(
-    origin + "/artifact?path=" + encodeURIComponent(screenshotPath),
-  );
+  const allowed = await fetch(origin + "/artifact?path=" + encodeURIComponent(screenshotPath));
   assert.equal(allowed.status, 200, "real in-run screenshot should be served");
   const blocked = await fetch(origin + "/artifact?path=" + encodeURIComponent(linkedPath));
   assert.equal(blocked.status, 403, "symlinked files outside run must be rejected");
