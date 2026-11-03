@@ -116,11 +116,17 @@ export class AcpCodingAgent implements CodingAgent {
     blocks: acp.ContentBlock[],
     timeoutMs: number,
   ): Promise<PromptTurnResult> {
-    if (!this.session) throw new Error("ACP session is not started");
-    void this.session.prompt(blocks).catch(() => undefined);
+    const session = this.session;
+    if (!session) throw new Error("ACP session is not started");
+    const requestFailed = new Promise<never>((_, reject) => {
+      void session.prompt(blocks).catch(reject);
+    });
     let output = "";
     for (;;) {
-      const message = await this.raceWithTimeout(this.session.nextUpdate(), timeoutMs);
+      const message = await this.raceWithTimeout(
+        Promise.race([session.nextUpdate(), requestFailed]),
+        timeoutMs,
+      );
       if (message.kind === "stop") return { stopReason: String(message.stopReason), text: output };
       const update = message.update;
       if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text")
