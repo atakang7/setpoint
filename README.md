@@ -40,15 +40,15 @@ Use Node.js `22.12.0` and an authenticated ACP agent.
 
 ```bash
 npm ci
-npm run build && npm link
-setpoint init
+npm run dev -- init
 ```
 
 Edit `setpoint.yaml` to set the task, agent command, and observer.
 
 ```bash
 npx playwright install chromium
-setpoint doctor && setpoint run
+npm run dev -- doctor
+npm run dev -- run
 ```
 
 ## Layout
