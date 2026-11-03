@@ -32,6 +32,7 @@ app.onRequest(acp.methods.agent.session.prompt, async (ctx) => {
 
   const promptBlocks = params?.prompt ?? [];
   const promptText = promptBlocks.map((b) => (b.type === "text" ? b.text : "")).join("");
+  if (promptText === "reject request") throw new Error("test prompt rejection");
 
   await ctx.client.notify(acp.methods.client.session.update, {
     sessionId,

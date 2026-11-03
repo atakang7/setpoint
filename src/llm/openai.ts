@@ -20,7 +20,12 @@ function mimeFor(path: string): string {
 export class OpenAIStructuredModel implements StructuredModel {
   private readonly client: OpenAI;
   constructor(options: { apiKey: string; baseURL?: string }) {
-    this.client = new OpenAI({ apiKey: options.apiKey, baseURL: options.baseURL });
+    this.client = new OpenAI({
+      apiKey: options.apiKey,
+      baseURL: options.baseURL,
+      timeout: 120_000,
+      maxRetries: 1,
+    });
   }
   async completeJson<T>(options: {
     model: string;
