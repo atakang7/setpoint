@@ -1,112 +1,40 @@
 # Setpoint
 
-**Outcome control for coding agents.**
+Setpoint runs a coding agent against a fixed target and checks its output with browser screenshots or a command. When a check fails, it sends feedback to the same coding session for another attempt.
 
-Setpoint is a small open-source wrapper that keeps a coding agent working until the **observable product** reaches a developer-defined North Star.
+## Quick start
 
-```text
-Developer intent
-      ↓
-North Star Definer      fresh standalone agent session
-      ↓
-Persistent coding-agent session
-      ↓ agent stops
-Observer                browser / command / product state
-      ↓
-Progress Judge          fresh standalone agent session
-      ↓                     ↓
-   CONTINUE           FINAL_CANDIDATE
-      │                     ↓
-      └── same coder      fresh jurors
-                              ↓
-                       PASS or same coder
-```
+Use Node.js 22.12.0 (see `.nvmrc`) or a newer supported version, npm, and an authenticated ACP agent. Chromium is required for browser observation.
 
-> **Setpoint evaluates what was produced, not how it was produced.**
-
-The coding agent is a replaceable worker. Setpoint owns the destination, the observation loop, and the decision to stop.
-
-## Why
-
-A surprising amount of coding-agent supervision is still a developer repeatedly saying:
-
-- "continue"
-- "technically done, but still bad"
-- "that is not what I meant"
-- "stop adding random things and improve the actual product"
-
-Setpoint turns that loop into autopilot.
-
-## North Star, not a spec
-
-The developer writes intent like a developer:
-
-```yaml
-task: >
-  Build a premium launch experience for this product. It should feel like a
-  serious Apple/Microsoft launch, not a generic AI landing page.
-```
-
-A strong standalone agent runs once and defines the finished reality: its character, experience, quality bar, visible failure modes, and optional expert guidance. It does **not** turn the request into Jira tickets or implementation requirements.
-
-Guidance may recommend a library, rendering strategy, or implementation direction when that materially raises the worker's odds of success. Guidance is advice, never part of the pass criteria.
-
-## Session topology
-
-Setpoint is intentionally built around agent sessions:
-
-| Role               | Session lifecycle                |
-| ------------------ | -------------------------------- |
-| North Star Definer | fresh, once                      |
-| Coder              | **persistent for the whole run** |
-| Progress Judge     | fresh on every coder stop        |
-| Final Jurors       | fresh and independent            |
-
-The same ACP agent can back every role by default. Users can override reasoning profiles to use a stronger or different standalone agent for the Definer, Judge, or Jury.
-
-This means **no separate LLM API key is required on the default path**. If your coding agent is already authenticated, Setpoint can orchestrate standalone sessions of it.
-
-An OpenAI API-backed structured model remains supported as an optional adapter.
-
-## ACP first
-
-Setpoint uses the stable **Agent Client Protocol (ACP)** as its preferred session boundary.
-
-Any stdio ACP agent can be configured through `command` + `args`. Non-ACP terminal agents can be supported later through a PTY adapter without changing the Setpoint state machine.
-
-## Requirements
-
-- Node.js 22.12+
-- an authenticated ACP-compatible agent command
-- Chromium for browser observation (`npx playwright install chromium`)
-
-## Install from source
-
-```bash
+```sh
 git clone https://github.com/atakang7/setpoint.git
 cd setpoint
-npm install
+npm ci
 npm run build
 npm link
 npx playwright install chromium
 ```
 
-Then inside the project you want Setpoint to control:
+In the project the agent should work on:
 
-```bash
+```sh
+cd /path/to/your-project
 setpoint init
+# Edit setpoint.yaml for this project before running.
 setpoint doctor
 setpoint run
 ```
 
-## Minimal configuration
+`setpoint init` writes `setpoint.yaml` only when it does not exist. `doctor` checks the configured command and, for browser observation, the Chromium installation. It does not validate agent authentication.
+
+## Configuration
+
+The default file uses an ACP agent for coding and evaluation. Replace `task` and the agent command as needed:
 
 ```yaml
 version: 1
-
 task: >
-  Build a premium launch experience for this product. It should feel like a
-  serious Apple/Microsoft launch, not a generic AI landing page.
+  Make the home page render correctly at desktop and mobile widths.
 
 agent:
   protocol: acp
@@ -114,20 +42,15 @@ agent:
   args: ["@agentclientprotocol/claude-agent-acp"]
   permissions: auto-allow
 
-# Fresh standalone sessions for Definer, Judge, and Jury.
-# By default these inherit the coding agent command + args above.
 models:
   provider: agent
   permissions: deny
-  ideal_definer: default
-  judge: default
-  jury: [default, default, default]
 
 observer:
   type: browser
-  url: http://localhost:3000
+  url: http://127.0.0.1:3000
   start_command: npm run dev
-  full_page: true
+  ready_timeout_ms: 60000
   viewports:
     - { width: 1440, height: 1000 }
     - { width: 390, height: 844 }
@@ -137,141 +60,49 @@ autopilot:
   require_unanimous_jury: true
 ```
 
-## Stronger/different reasoning agents
-
-Reasoning profiles override the default standalone agent runtime. The exact command/arguments are agent-specific; Setpoint does not hard-code model names.
-
-```yaml
-models:
-  provider: agent
-  permissions: deny
-  ideal_definer: strong
-  judge: strong
-  jury: [strong, strong, strong]
-
-  profiles:
-    strong:
-      command: my-acp-agent
-      args: ["--some-agent-specific-model-option", "strong-model"]
-```
-
-A profile can override `command`, `args`, `env`, or `permissions`. Missing fields inherit from the main coding-agent configuration.
-
-## Optional API provider
-
-If someone explicitly prefers API-backed evaluators, the previous OpenAI path remains available:
-
-```yaml
-models:
-  provider: openai
-  api_key_env: OPENAI_API_KEY
-  ideal_definer: gpt-5.6-sol
-  judge: gpt-5.6-terra
-  jury: [gpt-5.6-sol, gpt-5.6-sol, gpt-5.6-sol]
-```
-
-This is optional, not the Setpoint default architecture.
-
-## Prompt control
-
-Prompts are first-class configuration, but Setpoint appends them to non-overridable invariants so a user can make a judge harsher without deleting the outcome-control contract.
-
-```yaml
-prompts:
-  ideal_definer: |
-    Be ambitious. Find the middle ground between vague taste and spec writing.
-
-  coder: |
-    Work aggressively. Do not stop at technically complete.
-
-  judge: |
-    Be ruthless about visible quality. Do not reward effort.
-
-  jury: |
-    Pass only if another iteration would be polish rather than repair.
-```
-
-Core invariants include:
-
-- observable outcome beats implementation details
-- the North Star never moves toward a mediocre current result
-- coder claims of completion are not evidence
-- guidance is advisory
-- the progress judge cannot issue PASS
-- final jurors are fresh and independent
-
-## Observers
-
-### Browser
-
-The browser observer starts an optional dev command, waits for the configured URL, captures multiple viewports with Playwright, and exposes those artifacts to the judging session.
-
-### Command
-
-For CLIs, APIs, render commands, test harnesses, or other non-browser products:
+The browser URL and start command must match the target project. For a CLI or a testable command, replace the observer section with:
 
 ```yaml
 observer:
   type: command
-  command: npm run demo
+  command: npm test
   timeout_ms: 60000
 ```
 
-## State
+By default the reasoning roles reuse the configured ACP executable in separate sessions. `models.profiles` can override its command, arguments, environment, or permissions per role. For the optional OpenAI evaluator, set `models.provider: openai` and export `OPENAI_API_KEY` in your shell. `.env.example` lists that variable; Setpoint does not load `.env` files.
 
-Setpoint owns the run, not the coding-agent conversation:
+## How it works
 
-```text
-.setpoint/
-  latest
-  runs/
-    <run-id>/
-      run.json
-      north-star.json
-      turns/
-      observations/
-      judgments/
-      jury/
-```
+Setpoint defines a target once, then opens a coding session. After each coding turn, the observer captures evidence and a new judge session returns either `CONTINUE` or `FINAL_CANDIDATE`. Final candidates go to independent jury sessions. A failed jury returns its feedback to the existing coding session.
 
-A failed jury returns consolidated visible criticism to the **same persistent coder session**. A new progress judgment is made by a **new standalone judge session**.
+Runs are written under `.setpoint/runs/<run-id>/`, with `.setpoint/latest` pointing to the latest run. Each run retains its target, observations, judgments, and verdicts.
 
-## CLI
+## Usage
 
-```bash
-setpoint init
-setpoint doctor
-setpoint run
+```sh
 setpoint inspect
-setpoint --version
+setpoint inspect --watch
+setpoint inspect --json
+setpoint ui
+setpoint ui --host 127.0.0.1 --port 3210 --no-open
 ```
 
-## Safety
+The inspector and dashboard read stored run data; they do not control the agent. The UI listens on localhost by default. Binding to another interface can expose screenshots and run details to the network.
 
-`agent.permissions: auto-allow` is intended for autonomous coding and can approve mutation/tool requests from the coding worker. Run Setpoint inside an appropriate repository, sandbox, container, VM, or account boundary.
+## Limits and safety
 
-Reasoning sessions default to `permissions: deny`: judges should inspect reality, not secretly fix it themselves.
+An ACP-compatible command and its authentication must be set up separately. Setpoint does not install or authenticate the agent. Each `run` starts a new run; it does not resume a previous ACP session. Screenshots and command output provide evidence, not a guarantee of correctness.
 
-## Design principles
-
-- **Outcome over implementation.**
-- **North Star over specification bureaucracy.**
-- **Best intelligence at the highest-leverage decision point.**
-- **Persistent worker, fresh evaluators.**
-- **Frozen destination.**
-- **Few knobs and strong defaults.**
+`agent.permissions: auto-allow` may permit the worker to execute commands and change files. Run against a disposable checkout or inside a suitable sandbox. Evaluator sessions default to `permissions: deny`.
 
 ## Development
 
-```bash
-npm install
+```sh
+npm ci
+npx playwright install chromium
 npm run check
 ```
 
-CI covers formatting, linting, tests, and TypeScript builds. Releases use semantic versioning / Release Please.
+`npm run check` runs Prettier, ESLint, Vitest, and TypeScript. CI also runs a Chromium dashboard check. See [architecture](docs/architecture.md) and [run inspection](docs/observability.md) for implementation details.
 
-See [docs/architecture.md](docs/architecture.md) for the state machine and extension boundaries.
-
-## License
-
-MIT
+MIT license.
