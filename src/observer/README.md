@@ -1,4 +1,4 @@
-Part of [setpoint](../../README.md) .
+Part of [setpoint](../../README.md).
 
 # Observers
 
@@ -28,8 +28,8 @@ npm run test -- tests/browser-observer.test.ts tests/command-observer.test.ts
 
 ## Interfaces
 
-Browser captures write viewport PNGs and `metadata.json` . Command captures write `command.txt` .
+Browser captures write viewport PNGs and `metadata.json`. Command captures write `command.txt`.
 Both return an `Observation` with artifact paths.
 
 See [configuration](../../docs/reference/config.md) and
-[run files](../../docs/reference/run-files.md) .
+[run files](../../docs/reference/run-files.md).

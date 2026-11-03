@@ -1,4 +1,4 @@
-Part of [setpoint](../../README.md) .
+Part of [setpoint](../../README.md).
 
 # ACP agent
 
@@ -31,4 +31,4 @@ npm run test -- tests/acp-agent.test.ts
 The process exchanges newline-delimited JSON over stdin and stdout. Setpoint initializes ACP, opens
 a session, sends prompts, reads updates, and closes the session.
 
-See [configuration](../../docs/reference/config.md) .
+See [configuration](../../docs/reference/config.md).

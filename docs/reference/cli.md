@@ -11,7 +11,7 @@
 | `setpoint ui`        | `-c, --config`, `--host`, `--port`, `--no-open`        | Starts a local dashboard                                 |
 | `setpoint --version` | none                                                   | Prints the CLI version                                   |
 
-`--config` defaults to `setpoint.yaml` . Watch intervals start at `100ms` ; the default is `1000ms`
+`--config` defaults to `setpoint.yaml`. Watch intervals start at `100ms`; the default is `1000ms`
 .
 
 `setpoint run` exits with status `2` when the iteration limit is reached without a pass.

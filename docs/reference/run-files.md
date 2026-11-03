@@ -13,5 +13,5 @@
 | `.setpoint/runs/<id>/jury/NNN.json`         | Final juror verdicts for a candidate        |
 | `.setpoint/runs/<id>/observation-NNN/`      | Screenshots and metadata, or command output |
 
-Browser captures include `<width>x<height>.png` and `metadata.json` . Command captures include
-`command.txt` .
+Browser captures include `<width>x<height>.png` and `metadata.json`. Command captures include
+`command.txt`.

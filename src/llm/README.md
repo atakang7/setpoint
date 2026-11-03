@@ -1,4 +1,4 @@
-Part of [setpoint](../../README.md) .
+Part of [setpoint](../../README.md).
 
 # Evaluators
 
@@ -31,4 +31,4 @@ npm run test -- tests/agent-provider.test.ts
 Both adapters implement `StructuredModel.completeJson` with a prompt, JSON schema, model name, and
 optional screenshot paths.
 
-See [configuration](../../docs/reference/config.md) .
+See [configuration](../../docs/reference/config.md).

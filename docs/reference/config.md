@@ -1,6 +1,6 @@
 # Configuration
 
-`setpoint.yaml` is parsed by `src/config.ts` . Schema version is `1` .
+`setpoint.yaml` is parsed by `src/config.ts`. Schema version is `1`.
 
 ## Required fields
 

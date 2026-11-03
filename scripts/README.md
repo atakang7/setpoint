@@ -1,4 +1,4 @@
-Part of [setpoint](../README.md) .
+Part of [setpoint](../README.md).
 
 # Dashboard test script
 
@@ -26,5 +26,5 @@ node scripts/ui-e2e.mjs
 
 ## Interfaces
 
-The script writes desktop and mobile screenshots to `browser-evidence/` , then checks `/api/state`
-and `/artifact` .
+The script writes desktop and mobile screenshots to `browser-evidence/`, then checks `/api/state`
+and `/artifact`.

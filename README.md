@@ -63,8 +63,8 @@ setpoint doctor && setpoint run
 
 ## Docs
 
-[Documentation index](docs/README.md) , [configuration](docs/reference/config.md) ,
-[architecture](docs/explanation/architecture.md) .
+[Documentation index](docs/README.md), [configuration](docs/reference/config.md),
+[architecture](docs/explanation/architecture.md).
 
 ```text
 push/PR -> npm ci -> Chromium -> npm run check
