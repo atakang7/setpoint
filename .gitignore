@@ -6,5 +6,4 @@ dist/
 .setpoint/
 playwright-report/
 test-results/
-browser-evidence/
 .DS_Store

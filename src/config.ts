@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
@@ -147,10 +147,10 @@ prompts:
 
 export async function initConfig(path = "setpoint.yaml"): Promise<"created" | "exists"> {
   try {
-    await writeFile(path, DEFAULT_CONFIG, { encoding: "utf8", flag: "wx" });
+    await access(path);
+    return "exists";
+  } catch {
+    await writeFile(path, DEFAULT_CONFIG, "utf8");
     return "created";
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return "exists";
-    throw error;
   }
 }
