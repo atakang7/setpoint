@@ -42,7 +42,7 @@ jobs:
         run: node scripts/ui-e2e.mjs
       - name: Save browser evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: setpoint-ui-screenshots
           path: browser-evidence/
