@@ -62,6 +62,7 @@ setpoint ui
 
 | var                        | default                 | what                                                 |
 | -------------------------- | ----------------------- | ---------------------------------------------------- |
+| `task`                     | required                | Outcome to judge                                     |
 | `agent.command`            | `npx`                   | ACP executable                                       |
 | `agent.args`               | Claude ACP package      | Arguments passed to the executable                   |
 | `agent.permissions`        | `auto-allow`            | Coder tool approvals                                 |
