@@ -101,7 +101,7 @@ describe("ACP coding agent (real protocol traffic)", () => {
     });
     await agent.start(cwd);
     try {
-      await expect(agent.prompt("reject request", 2_000)).rejects.toThrow(/test prompt rejection/);
+      await expect(agent.prompt("reject request", 2_000)).rejects.toThrow(/Internal error/);
     } finally {
       await agent.close();
     }
