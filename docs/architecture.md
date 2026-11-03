@@ -1,17 +1,77 @@
 # Architecture
 
-`SetpointEngine` coordinates one persistent coder session, observations, and short-lived evaluator sessions.
+Setpoint is a state machine around replaceable agent sessions and observation adapters.
 
-## Sessions
+## State machine
 
-- `AcpCodingAgent` keeps the worker's ACP session across coder iterations.
-- `AgentStructuredModel` starts a fresh ACP session for each definer, judge, or juror request.
-- `OpenAIStructuredModel` provides the optional API evaluator.
-- The definer writes `north-star.json` once; judgments use the same target.
-- A judge returns `CONTINUE` or `FINAL_CANDIDATE`; only a jury can approve the run.
-- A failed jury sends feedback to the existing coder; `max_iterations` ends an unfinished run.
+```text
+DEFINING
+   ↓
+CODING ←───────────────────────────────┐
+   ↓                                   │
+OBSERVING                              │
+   ↓                                   │
+JUDGING ── CONTINUE ───────────────────┘
+   │
+   └── FINAL_CANDIDATE
+             ↓
+            JURY
+          ↙      ↘
+       FAIL      PASS
+        │          │
+        └→ CODING  DONE
+```
 
-## Storage
+The Setpoint run is the durable identity. Agent sessions are resources attached to roles inside that run.
 
-- `RunStorage` writes the run record and artifacts under `.setpoint/runs/<run-id>/`.
-- `SetpointEngine` alone changes phases; `inspect` and `ui` only read saved state.
+## Session topology
+
+### North Star Definer
+
+Runs once in a fresh standalone session. It can be bound to the strongest available agent/model because its output influences every later iteration. It describes the desired finished reality and may give implementation leverage, but it must not become a software specification.
+
+### Coder
+
+One persistent ACP session for the run. It owns implementation choices and receives the frozen North Star plus the latest directional feedback.
+
+### Observer
+
+Turns the current product into judgeable evidence. Current built-ins are browser screenshots and command behavior. The observer does not decide quality.
+
+### Progress Judge
+
+A fresh standalone session is created every time the worker stops. It is code-blind and can only return `CONTINUE` or `FINAL_CANDIDATE`. The session is destroyed after the judgment so it cannot become attached to prior attempts.
+
+### Final Jury
+
+Each juror gets a separate fresh standalone session with no worker claims, previous judge opinions, or implementation history. The default policy requires every juror to pass.
+
+## Runtime boundary
+
+ACP is the preferred session protocol. The same authenticated ACP agent can back every role by default:
+
+```text
+main ACP runtime
+├── coder session       persistent
+├── definer session     fresh once
+├── judge session       fresh per stop
+└── jury sessions       fresh per candidate
+```
+
+Reasoning profiles may override the ACP command/arguments for a role, allowing a stronger or different standalone agent without changing the state machine.
+
+An API-backed `StructuredModel` remains an optional adapter. It is not required by the core architecture.
+
+## Extension interfaces
+
+The engine depends on three small contracts: `CodingAgent`, `Observer`, and `StructuredModel`. The default `StructuredModel` implementation is itself backed by fresh ACP agent sessions. OpenAI and future direct API providers are optional alternatives.
+
+A future PTY runtime can support terminal agents without ACP while preserving the same role/session lifecycle.
+
+## Frozen target
+
+`north-star.json` is generated once per run and is never rewritten. Later judges always receive that same object. This prevents evaluator drift toward whatever the coder happened to produce.
+
+## Prompt composition
+
+User prompt preferences are appended after Setpoint's role invariants. Setpoint intentionally does not expose a raw replacement for the entire system prompt in v0.1 because that would make run semantics unknowable.

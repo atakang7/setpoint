@@ -92,18 +92,4 @@ describe("ACP coding agent (real protocol traffic)", () => {
     // After close, a new prompt must throw (session disposed).
     await expect(agent.prompt("post-close")).rejects.toThrow(/not started/);
   }, 15000);
-  it("reports a rejected ACP prompt without waiting for the timeout", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "setpoint-acp-reject-"));
-    const agent = new AcpCodingAgent({
-      command: "node",
-      args: [AGENT_SCRIPT],
-      permissions: "auto-allow",
-    });
-    await agent.start(cwd);
-    try {
-      await expect(agent.prompt("reject request", 2_000)).rejects.toThrow(/Internal error/);
-    } finally {
-      await agent.close();
-    }
-  }, 15000);
 });

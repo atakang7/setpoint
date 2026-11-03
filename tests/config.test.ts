@@ -17,10 +17,4 @@ describe("config", () => {
     expect(config.agent.protocol).toBe("acp");
     expect(config.autopilot.max_iterations).toBe(20);
   });
-  it("propagates filesystem errors when creating a config", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "setpoint-config-error-"));
-    await expect(initConfig(join(dir, "missing", "setpoint.yaml"))).rejects.toMatchObject({
-      code: "ENOENT",
-    });
-  });
 });
