@@ -1,10 +1,41 @@
 # Setpoint
 
-Setpoint runs a coding agent against a fixed target and checks its output with browser screenshots or a command. When a check fails, it sends feedback to the same coding session for another attempt.
+Setpoint runs an ACP coding agent against a fixed target and checks its output with fresh evaluators.
 
-## Quick start
+```text
++----------------------+
+| SetpointEngine       |
++----------------------+
+           |
+         prompts
+           v
++----------------------+
+| AcpCodingAgent       |
++----------------------+
+           |
+         edits
+           v
++----------------------+
+| target project       |
++----------------------+
+           |
+        observed
+           v
++----------------------+
+| BrowserObserver      |
+| or CommandObserver   |
++----------------------+
+           |
+        evidence
+           v
++----------------------+
+| StructuredModel      |
++----------------------+
+```
 
-Use Node.js 22.12.0 (see `.nvmrc`) or a newer supported version, npm, and an authenticated ACP agent. Chromium is required for browser observation.
+## Run
+
+Node.js 22.12.0 is pinned in `.nvmrc`; the ACP agent must be installed and authenticated separately.
 
 ```sh
 git clone https://github.com/atakang7/setpoint.git
@@ -13,96 +44,65 @@ npm ci
 npm run build
 npm link
 npx playwright install chromium
+
+cd /path/to/target-project
+setpoint init
 ```
 
-In the project the agent should work on:
+Edit `setpoint.yaml` for the target project, then run:
 
 ```sh
-cd /path/to/your-project
-setpoint init
-# Edit setpoint.yaml for this project before running.
 setpoint doctor
 setpoint run
-```
-
-`setpoint init` writes `setpoint.yaml` only when it does not exist. `doctor` checks the configured command and, for browser observation, the Chromium installation. It does not validate agent authentication.
-
-## Configuration
-
-The default file uses an ACP agent for coding and evaluation. Replace `task` and the agent command as needed:
-
-```yaml
-version: 1
-task: >
-  Make the home page render correctly at desktop and mobile widths.
-
-agent:
-  protocol: acp
-  command: npx
-  args: ["@agentclientprotocol/claude-agent-acp"]
-  permissions: auto-allow
-
-models:
-  provider: agent
-  permissions: deny
-
-observer:
-  type: browser
-  url: http://127.0.0.1:3000
-  start_command: npm run dev
-  ready_timeout_ms: 60000
-  viewports:
-    - { width: 1440, height: 1000 }
-    - { width: 390, height: 844 }
-
-autopilot:
-  max_iterations: 20
-  require_unanimous_jury: true
-```
-
-The browser URL and start command must match the target project. For a CLI or a testable command, replace the observer section with:
-
-```yaml
-observer:
-  type: command
-  command: npm test
-  timeout_ms: 60000
-```
-
-By default the reasoning roles reuse the configured ACP executable in separate sessions. `models.profiles` can override its command, arguments, environment, or permissions per role. For the optional OpenAI evaluator, set `models.provider: openai` and export `OPENAI_API_KEY` in your shell. `.env.example` lists that variable; Setpoint does not load `.env` files.
-
-## How it works
-
-Setpoint defines a target once, then opens a coding session. After each coding turn, the observer captures evidence and a new judge session returns either `CONTINUE` or `FINAL_CANDIDATE`. Final candidates go to independent jury sessions. A failed jury returns its feedback to the existing coding session.
-
-Runs are written under `.setpoint/runs/<run-id>/`, with `.setpoint/latest` pointing to the latest run. Each run retains its target, observations, judgments, and verdicts.
-
-## Usage
-
-```sh
 setpoint inspect
-setpoint inspect --watch
-setpoint inspect --json
 setpoint ui
-setpoint ui --host 127.0.0.1 --port 3210 --no-open
 ```
 
-The inspector and dashboard read stored run data; they do not control the agent. The UI listens on localhost by default. Binding to another interface can expose screenshots and run details to the network.
+## Config
 
-## Limits and safety
+| var                        | default                 | what                                                 |
+| -------------------------- | ----------------------- | ---------------------------------------------------- |
+| `agent.command`            | `npx`                   | ACP executable                                       |
+| `agent.args`               | Claude ACP package      | Arguments passed to the executable                   |
+| `agent.permissions`        | `auto-allow`            | Coder tool approvals                                 |
+| `models.provider`          | `agent`                 | ACP evaluators; `openai` is optional                 |
+| `models.permissions`       | `deny`                  | Evaluator tool approvals                             |
+| `observer.type`            | `browser`               | `browser` or `command`                               |
+| `observer.url`             | `http://localhost:3000` | Target URL for browser capture                       |
+| `observer.start_command`   | `npm run dev`           | Target's server command                              |
+| `autopilot.max_iterations` | `20`                    | Maximum coder turns                                  |
+| `run_dir`                  | `.setpoint`             | Saved runs                                           |
+| `OPENAI_API_KEY`           | unset                   | Required only for OpenAI evaluators; export in shell |
 
-An ACP-compatible command and its authentication must be set up separately. Setpoint does not install or authenticate the agent. Each `run` starts a new run; it does not resume a previous ACP session. Screenshots and command output provide evidence, not a guarantee of correctness.
+Set `observer.command` instead of `observer.url` and `observer.start_command` when `observer.type: command`; see [Cortex](docs/cortex.md) for a different ACP agent.
 
-`agent.permissions: auto-allow` may permit the worker to execute commands and change files. Run against a disposable checkout or inside a suitable sandbox. Evaluator sessions default to `permissions: deny`.
+## CI
 
-## Development
-
-```sh
-npm ci
-npx playwright install chromium
-npm run check
+```text
+      +----------------+
+      | push / PR      |
+      +----------------+
+              |
+           triggers
+              v
+      +----------------+
+      | CI workflow    |
+      +----------------+
+          |        |
+        runs      runs
+          v        v
++--------------+  +----------------+
+| check        |  | dashboard-e2e  |
+| Node 22 / 24 |  | Chromium       |
++--------------+  +----------------+
 ```
 
-`npm run check` runs Prettier, ESLint, Vitest, and TypeScript. CI also runs a Chromium dashboard check. See [architecture](docs/architecture.md) and [run inspection](docs/observability.md) for implementation details.
+Verify locally with `npm run check` after `npm ci` and `npx playwright install chromium`.
 
-MIT license.
+## Limits
+
+- `agent.permissions: auto-allow` can execute commands and modify files; use an isolated workspace.
+- Each `setpoint run` starts a new run, not a resumed ACP session.
+- Browser and command observations cannot prove every requirement.
+- `setpoint ui` is read-only and listens on `127.0.0.1:3210` by default; see [inspection](docs/observability.md).
+- The engine's phase and session rules are in [architecture](docs/architecture.md).
