@@ -1,6 +1,7 @@
 # Setpoint
 
-Setpoint is a Node.js CLI for developers who want coding agents judged against an observable product target.
+Setpoint is a Node.js CLI for developers who want coding agents judged against an observable product
+target.
 
 ```text
 +------------+
@@ -41,25 +42,29 @@ Use Node.js `22.12.0` and an authenticated ACP agent.
 npm ci
 npm run build && npm link
 setpoint init
+```
+
+Edit `setpoint.yaml` to set the task, agent command, and observer.
+
+```bash
 npx playwright install chromium
 setpoint doctor && setpoint run
 ```
 
-Edit `setpoint.yaml` after initialization to set the task, agent command, and observer.
-
 ## Layout
 
-| path | what it is |
-| --- | --- |
-| [src/](src/README.md) | CLI, engine, configuration, run state, and dashboard |
-| [src/agent/](src/agent/README.md) | Persistent ACP coding sessions |
-| [src/llm/](src/llm/README.md) | Agent and API evaluator adapters |
-| [src/observer/](src/observer/README.md) | Browser and command capture |
-| [scripts/](scripts/README.md) | Dashboard browser test |
+| path                                    | what it is                                           |
+| --------------------------------------- | ---------------------------------------------------- |
+| [src/](src/README.md)                   | CLI, engine, configuration, run state, and dashboard |
+| [src/agent/](src/agent/README.md)       | Persistent ACP coding sessions                       |
+| [src/llm/](src/llm/README.md)           | Agent and API evaluator adapters                     |
+| [src/observer/](src/observer/README.md) | Browser and command capture                          |
+| [scripts/](scripts/README.md)           | Dashboard browser test                               |
 
 ## Docs
 
-[Documentation index](docs/README.md), [configuration](docs/reference/config.md), [architecture](docs/explanation/architecture.md).
+[Documentation index](docs/README.md) , [configuration](docs/reference/config.md) ,
+[architecture](docs/explanation/architecture.md) .
 
 ```text
 push/PR -> npm ci -> Chromium -> npm run check

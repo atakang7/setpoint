@@ -1,4 +1,4 @@
-Part of [setpoint](../README.md).
+Part of [setpoint](../README.md) .
 
 # CLI and engine
 
@@ -19,13 +19,15 @@ npm run test -- tests/engine.test.ts tests/inspect.test.ts
 
 ## Config
 
-| var | default | what |
-| --- | --- | --- |
+| var        | default         | what                                |
+| ---------- | --------------- | ----------------------------------- |
 | `--config` | `setpoint.yaml` | Configuration path for CLI commands |
-| `run_dir` | `.setpoint` | Root for persisted runs |
+| `run_dir`  | `.setpoint`     | Root for persisted runs             |
 
 ## Interfaces
 
-The `setpoint` executable has `init`, `doctor`, `run`, `inspect`, and `ui` commands. The UI reads `/api/state` and `/artifact` over local HTTP.
+The `setpoint` executable has `init` , `doctor` , `run` , `inspect` , and `ui` commands. The UI
+reads `/api/state` and `/artifact` over local HTTP.
 
-See [CLI reference](../docs/reference/cli.md) and [architecture](../docs/explanation/architecture.md).
+See [CLI reference](../docs/reference/cli.md) and
+[architecture](../docs/explanation/architecture.md) .
