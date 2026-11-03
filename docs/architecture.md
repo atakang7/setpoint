@@ -1,26 +1,17 @@
 # Architecture
 
-Setpoint coordinates a coding session, an observer, and short-lived evaluator sessions. Its state is stored on disk rather than in the evaluator conversations.
+`SetpointEngine` coordinates one persistent coder session, observations, and short-lived evaluator sessions.
 
-```text
-defining -> coding -> observing -> judging
-             ^                    |
-             |       CONTINUE ----+
-             |                    |
-             +---- jury FAIL -----+-- FINAL_CANDIDATE -> jury -> done
-```
+## Sessions
 
-The definer runs once and writes `north-star.json`. The coding agent keeps its ACP session for the whole run. After every coding turn, the observer records screenshots or command output, and a fresh judge session checks that evidence against the original target.
+- `AcpCodingAgent` keeps the worker's ACP session across coder iterations.
+- `AgentStructuredModel` starts a fresh ACP session for each definer, judge, or juror request.
+- `OpenAIStructuredModel` provides the optional API evaluator.
+- The definer writes `north-star.json` once; judgments use the same target.
+- A judge returns `CONTINUE` or `FINAL_CANDIDATE`; only a jury can approve the run.
+- A failed jury sends feedback to the existing coder; `max_iterations` ends an unfinished run.
 
-A judge cannot approve a run. It can send the coder back to work or request a final jury. Each juror receives the same target and evidence in its own session. A jury failure sends its findings to the existing coder. The iteration limit ends the run with `failed` if no jury passes it.
+## Storage
 
-## Boundaries
-
-- `CodingAgent` manages the worker session; `Observer` gathers evidence.
-- `StructuredModel` handles one-off definer, judge, and jury requests.
-- `RunStorage` persists the record and files beneath `.setpoint/runs/`.
-- `SetpointEngine` owns phase transitions. The CLI inspector and UI only read persisted files.
-
-The default evaluator uses fresh ACP sessions. The OpenAI API adapter is optional. Browser observation starts the configured local command if supplied; command observation executes the configured shell command.
-
-The target is not rewritten during a run. Neither observer output nor agent claims can change it. See [run inspection](observability.md) for the saved files and read-only UI.
+- `RunStorage` writes the run record and artifacts under `.setpoint/runs/<run-id>/`.
+- `SetpointEngine` alone changes phases; `inspect` and `ui` only read saved state.
